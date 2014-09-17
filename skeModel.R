@@ -1,11 +1,9 @@
 
-######################################## a set of functions allowing to run ANY model with splines and iteractions
-######################################## a set of functions allowing to run ANY model with splines and iteractions
-######################################## a set of functions allowing to run ANY model with splines and iteractions
-######################################## a set of functions allowing to run ANY model with splines and iteractions
-######################################## a set of functions allowing to run ANY model with splines and iteractions
-### Author: Svetlana Eden 
-### Author: Svetlana Eden 
+######################################## A set of functions allowing to run ANY model with splines and iteractions
+######################################## This code is "tuned" to competing risk regression by Gray and Fine
+######################################## but after some modification, it can be used with any regression
+######################################## implemented in R as long as this regression has usual coefficient
+######################################## and variance-covariance matrix
 ### Author: Svetlana Eden 
 
 positive = function(x){
