@@ -4,7 +4,7 @@
 ######################################## but after some modification, it can be used with any regression
 ######################################## implemented in R as long as this regression has usual coefficient
 ######################################## and variance-covariance matrix
-### Author: Svetlana Eden 
+### Author: Svetlana Eden, Vanderbilt University
 
 positive = function(x){
 ### used by spline functions
