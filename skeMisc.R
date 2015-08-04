@@ -1,6 +1,135 @@
 ####################### author: Svetlana K. Eden, svetlana.eden@vanderbilt.edu
 ################################################
 
+fillUpStr = function(str, howManyToFill=NULL, where="front", fill = " "){
+### "str" to fill
+### howManyToFill - if NULL then it fill up to the number of maximum characters
+### "where" can be either "head" or "tail"
+  if(!any(where %in% c("front", "tail"))) stop("Argument 'where' can be either 'front' or 'tail'\n")
+  if(is.null(howManyToFill)){
+    howManyToFill = diff(range(nchar(str)))
+  }
+  numToFill = max(nchar(str)) - nchar(str)
+  fills = sapply(numToFill, function(x)paste(rep(fill, x), collapse=""))
+  if (where == "front"){
+    res = paste(fills, str, sep="")
+  }else{
+    res = paste(str, fills, sep="")
+  }
+  res
+}
+
+fillUpDecimals = function(numStr, howManyToFill=NULL, fill = "0"){
+### howManyToFill - if NULL then it fill up to the number of maximum decimal points
+###   for example, if numStr = c(0.33, 34, 4.1) then it fills up to two decimal points
+###   and the result will be a character string wiht c("0.33", "34.00", "4.10")
+  noWholeNum = gsub("^[0-9]+$", "", as.character(numStr), perl=TRUE)
+  decimChar = gsub("^[0-9]+\\.", "", noWholeNum)
+  if(is.null(howManyToFill)){
+    howManyToFill = max(nchar(decimChar))
+  }
+  numToFill = howManyToFill - nchar(decimChar)
+  fills = sapply(numToFill, function(x)paste(rep(fill, x), collapse=""))
+  dPoints = sapply(nchar(noWholeNum), function(x){if(x==0) "." else ""})
+  res = paste(as.character(numStr), dPoints, fills, sep="")
+  res
+}
+
+plotAllLakes = function(lakeList, printPval=TRUE,
+                        betweenLakes = 1, leftLabelsLine=-2.8, rightLabelsLine=-4.5,
+                        lakeLabelY = .5,
+                        xLimOverRide = NULL, axisInfo = list(xlabels=c(.5, 1, 1.5), cex=.7, line=0),
+                        ...){
+  ### lakeList - a list of matrices with columns of Effect, Lower, and Upper, and Pvalue
+  ### lakeList = list("First one" = matr[1:5,], "second"=matr[6:7,],
+  ###                third = matr[8:11,], forth=t(as.matrix(matr[12,], nrow=3)))
+  ###
+  ### printPval - if the forth column should be printed
+  ### betweenLakes - the distance between bunches of "lakes"
+  ### leftLabelsLine - how close to the plot we should print the left labels
+  ###    where the leftLabelsLine are defined by the row names of the matrices in lakeList
+  ### rightLabelsLine - how close to the plot we should print the right labels
+  ###    where the rightLabelsLine are "Effect (Lower, Upper)"
+  ### where to place a label for each "lake chunk" (in our example it would be "First one")
+  ###    should be a numbe between 0.5 and 1
+  ### xLimOverRide - user defined xlim
+  ### axisInfo - all about axis:
+  ###    xlabels=c(.5, 1, 1.5)  - besides max and min what other labels to put
+  ###    cex - what font size to use
+  ###    line - where to put the axis
+
+  for (i in 1:length(lakeList)){
+    pmatrix = lakeList[[i]]
+    if (any(pmatrix[,1]-pmatrix[,2]<0)) stop("lower bound is larger than the point estimate")
+    if (any(pmatrix[,3]-pmatrix[,1]<0)) stop("point estimate is larger than the upper bound")
+  }
+  if(!is.null(xLimOverRide)){
+    xlim = xLimOverRide
+  }else{
+    xRange = range(sapply(lakeList, function(pmatrix){range(pmatrix[, 1:3])}))
+    xlim = (xRange)+0.3*c(-diff(xRange), diff(xRange))
+  }
+  lakeLengths = sapply(lakeList, function(x){nrow(x)})
+  if (length(lakeList) > 1){
+    lakeOffset = betweenLakes*(length(lakeList):1)+0.5*c(sapply(2:length(lakeList), function(i)sum(lakeLengths[i:length(lakeList)]) ), 0)
+  }else{
+    lakeOffset = 0
+  }
+  mainY = list()
+  for (i in 1:length(lakeList)){
+    mainY[[i]] = 0.5*(nrow(lakeList[[i]]):1) + lakeOffset[i]
+  }
+  height = .2
+  ylim = range(sapply(mainY, function(x){range(x)})) + c(0, betweenLakes)
+  plot(x=0, y=0, type="n", xlim = xlim, ylim = ylim, axes=FALSE, ann=FALSE)
+  axisLables = round(c(xlim[1], axisInfo$xlabels[axisInfo$xlabels>xlim[1] & axisInfo$xlabels<xlim[2]], xlim[2]), axisInfo$roundx)
+  axis(side=3, at=axisLables, line = axisInfo$line,
+       labels = axisLables, cex.axis=axisInfo$cex)
+  for (i in 1:length(lakeList)){
+    cat(xlim[1], "===========*****_____===\n")
+    plotOneLake(pmatrix=lakeList[[i]],
+                     mainY=mainY[[i]], height=.2,
+                     printPval=printPval,
+                     xLimOverRide = xlim,
+                     leftLabelsLine = leftLabelsLine, rightLabelsLine = rightLabelsLine,
+                     axisInfo = axisInfo, ...)
+    text(x = 1, y=mainY[[i]][1] + 2*height+ lakeLabelY*betweenLakes, labels=names(lakeList)[i], pos=1, font=2, cex=.8)
+  }
+}
+
+plotOneLake = function(pmatrix,         ### what to plot (effect, lower, upper, pvalue)
+                       mainY, height,   ### where to plot it and with what hight of bars
+                       xLimOverRide,    ### xlim
+                       printPval=TRUE,  ### see plotAllLakes
+                       leftLabels=NULL, rightLabels=NULL,             ### user defined lables (not implemented)
+                       leftLabelsLine=-2.8, rightLabelsLine=-4.5,...){### see plotAllLakes
+  ### pmatrix: the first column is the point estimate
+  ###          the second and third columns are the lower and upper bounds
+  ###          the forth column has p-values (this is only needed if printPval == TRUE)
+
+  if (any(pmatrix[,1]-pmatrix[,2]<0)) stop("lower bound is larger than the point estimate")
+  if (any(pmatrix[,3]-pmatrix[,1]<0)) stop("point estimate is larger than the upper bound")
+  if(is.null(leftLabels)){
+    leftLabels = rownames(pmatrix)
+  }
+  if(is.null(rightLabels)){
+    roundn = 2
+    rightLabels = paste(fillUpStr(fillUpDecimals(round(pmatrix[,1], roundn))), " (",
+                        fillUpStr(fillUpDecimals(round(pmatrix[,2], roundn))),", ",
+                        fillUpStr(fillUpDecimals(round(pmatrix[,3], roundn))), ")", sep="")
+  }
+  segments(x0=1, y0=mainY[1]+height, y1=mainY[length(mainY)], lty=3, col=gray(.5))
+  segments(x0=xLimOverRide[1], y0=mainY + height/2, x1=xLimOverRide[2], lty=3, col=gray(.7))
+  rect(xleft=pmatrix[,2], ybottom=mainY, xright=pmatrix[,3], ytop=mainY + height, density = NULL, col="gray", border=gray(.45))
+  points(x=pmatrix[,1], y=mainY+height/2, pch=18, cex=1.5)
+  mtext(text=leftLabels, at=mainY+height/2, side=2, line=leftLabelsLine, las=2, ...)
+  if (printPval){
+    mtext(text=pvalueStr(pmatrix[,4]), at=mainY+height/2, side=2, line=leftLabelsLine, las=2, adj=0, ...)
+  }
+  mtext(text=rightLabels, at=mainY+height/2, side=4, line=rightLabelsLine, las=1, ...)
+}
+
+
 ### defineDistance from the center of the group
 distFromCenter = function(x, y, xSet=x, ySet=y, precision=12){
   if(FALSE){
@@ -501,10 +630,6 @@ findLineParam = function(point1, point2){
   k = (y1-y2)/(x1-x2)
   b = y1 - x1*(y1-y2)/(x1-x2)
   c(k,b)
-}
-
-lineTrans = function(x, lineK_and_B){
-  x*lineK_and_B[1]+lineK_and_B[2]
 }
 
 interp = function(x, point1, point2){
