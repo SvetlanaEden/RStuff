@@ -23,13 +23,13 @@ fillUpDecimals = function(numStr, howManyToFill=NULL, fill = "0"){
 ### howManyToFill - if NULL then it fill up to the number of maximum decimal points
 ###   for example, if numStr = c(0.33, 34, 4.1) then it fills up to two decimal points
 ###   and the result will be a character string wiht c("0.33", "34.00", "4.10")
-  noWholeNum = gsub("^[0-9]+$", "", as.character(numStr), perl=TRUE)
-  decimChar = gsub("^[0-9]+\\.", "", noWholeNum)
+  noWholeNum = gsub("^[-+ ]*[0-9]*$", "", as.character(numStr), perl=TRUE)
+  decimChar = gsub("^[-+ ]*[0-9]*\\.", "", noWholeNum)
   if(is.null(howManyToFill)){
-    howManyToFill = max(nchar(decimChar))
+    howManyToFill = max(nchar(decimChar[!is.na(decimChar)]))
   }
-  numToFill = howManyToFill - nchar(decimChar)
-  fills = sapply(numToFill, function(x)paste(rep(fill, x), collapse=""))
+  numToFill = pmax(0, howManyToFill - nchar(decimChar))
+  fills = sapply(numToFill, function(x) {paste(rep(fill, x), collapse="")} )
   dPoints = sapply(nchar(noWholeNum), function(x){if(x==0) "." else ""})
   res = paste(as.character(numStr), dPoints, fills, sep="")
   res
